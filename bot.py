@@ -27,16 +27,16 @@ def send_tweet():
 
     tweet_text = f"🔥 Ücretsiz Oyun Fırsatı!\n\n🎮 {title}\n🕹️ Platform: {platforms}\n\n🔗 Hemen Al: {giveaway_url}\n\n#ÜcretsizOyun #OyunFırsatı #Gaming"
 
-    client = tweepy.Client(
-        consumer_key=API_KEY,
-        consumer_secret=API_SECRET,
-        access_token=ACCESS_TOKEN,
-        access_token_secret=ACCESS_SECRET
+    # v1.1 API Bağlantısı (Pay Per Use sınırına takılmaz)
+    auth = tweepy.OAuth1UserHandler(
+        API_KEY, API_SECRET,
+        ACCESS_TOKEN, ACCESS_SECRET
     )
+    api = tweepy.API(auth)
 
     try:
-        res = client.create_tweet(text=tweet_text)
-        print(f"Tweet başarıyla paylaşıldı! ID: {res.data['id']}")
+        status = api.update_status(status=tweet_text)
+        print(f"Tweet başarıyla paylaşıldı! ID: {status.id}")
     except Exception as e:
         print(f"Tweet atılırken hata oluştu: {e}")
 
