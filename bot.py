@@ -2,6 +2,7 @@ import os
 import time
 import requests
 from playwright.sync_api import sync_playwright
+from playwright_stealth import stealth_sync
 
 USERNAME = os.environ.get("X_USERNAME")
 PASSWORD = os.environ.get("X_PASSWORD")
@@ -24,50 +25,58 @@ def post_tweet():
         return
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled", "--no-sandbox"]
+        )
         context = browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            viewport={"width": 1280, "height": 720},
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
         )
         page = context.new_page()
+        stealth_sync(page)
 
         print("X giriş sayfasına gidiliyor...")
-        page.goto("https://x.com/i/flow/login")
-        page.wait_for_timeout(4000)
+        page.goto("https://x.com/i/flow/login", wait_until="networkidle")
+        time.sleep(5)
 
-        # Kullanıcı Adı Girişi
+        # Kullanıcı Adı
         print("Kullanıcı adı giriliyor...")
-        page.fill('input[autocomplete="username"]', USERNAME)
+        username_input = page.wait_for_selector('input[autocomplete="username"], input[name="text"]', timeout=20000)
+        username_input.type(USERNAME, delay=100)
         page.keyboard.press("Enter")
-        page.wait_for_timeout(3000)
+        time.sleep(4)
 
-        # Şüpheli giriş kontrolü (Email veya telefon sorarsa)
-        if page.locator('input[data-testid="ocfEnterTextTextInput"]').is_visible():
+        # Ekstra Güvenlik Kontrolü (Email / Telefon sorarsa)
+        extra_input = page.query_selector('input[data-testid="ocfEnterTextTextInput"], input[name="text"]')
+        if extra_input and extra_input.is_visible():
             print("Ekstra doğrulama istendi, e-posta giriliyor...")
-            page.fill('input[data-testid="ocfEnterTextTextInput"]', EMAIL)
+            extra_input.type(EMAIL, delay=100)
             page.keyboard.press("Enter")
-            page.wait_for_timeout(3000)
+            time.sleep(4)
 
-        # Şifre Girişi
+        # Şifre
         print("Şifre giriliyor...")
-        page.fill('input[name="password"]', PASSWORD)
+        password_input = page.wait_for_selector('input[name="password"]', timeout=20000)
+        password_input.type(PASSWORD, delay=100)
         page.keyboard.press("Enter")
-        page.wait_for_timeout(5000)
+        time.sleep(6)
 
         # Tweet Gönderme
-        print("Tweet hazırlanıyor...")
-        page.goto("https://x.com/compose/tweet")
-        page.wait_for_timeout(4000)
+        print("Tweet ekranına geçiliyor...")
+        page.goto("https://x.com/compose/post", wait_until="networkidle")
+        time.sleep(4)
 
-        editor = page.locator('div[data-testid="tweetTextarea_0"]')
+        editor = page.wait_for_selector('div[data-testid="tweetTextarea_0"]', timeout=20000)
         editor.click()
-        editor.fill(tweet_text)
-        page.wait_for_timeout(2000)
+        editor.type(tweet_text, delay=30)
+        time.sleep(2)
 
-        post_button = page.locator('button[data-testid="tweetButton"]')
+        post_button = page.wait_for_selector('button[data-testid="tweetButton"]', timeout=10000)
         post_button.click()
         print("Tweet gönder butonuna basıldı!")
         
-        page.wait_for_timeout(5000)
+        time.sleep(6)
         browser.close()
         print("İşlem başarıyla tamamlandı.")
 
