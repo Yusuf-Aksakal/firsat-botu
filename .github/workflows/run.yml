@@ -19,7 +19,7 @@ jobs:
 
       - name: Kütüphaneleri ve Tarayıcıyı Yukle
         run: |
-          pip install requests playwright playwright-stealth
+          pip install requests playwright
           playwright install chromium --with-deps
 
       - name: Botu Calistir
